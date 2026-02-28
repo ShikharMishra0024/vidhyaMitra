@@ -1,6 +1,7 @@
 import os
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, EmailStr
+from pydantic_extra_types.phone_numbers import PhoneNumber
 from supabase import create_client, Client
 from dotenv import load_dotenv
 
@@ -23,9 +24,10 @@ router = APIRouter()
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
-    username: str
+    # username: str
     firstName: str
     lastName: str
+    phone: PhoneNumber = None  # Optional field
 
 class UserLogin(BaseModel):
     email: EmailStr  # Supabase native auth relies on email
@@ -42,9 +44,10 @@ async def register_user(user: UserCreate):
             "password": user.password,
             "options": {
                 "data": {
-                    "username": user.username,
+                    # "username": user.username,
                     "first_name": user.firstName,
                     "last_name": user.lastName,
+                    "phone": str(user.phone) if user.phone else None  # Store phone as string if provided
                 }
             }
         })
