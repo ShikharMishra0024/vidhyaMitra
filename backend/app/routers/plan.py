@@ -32,6 +32,26 @@ async def generate_training_plan(request: PlanRequest):
     YouTube tutorials, and grabs contextual images from Pexels.
     """
     try:
+
+        # 1. Handle the Empty String / Auto-Fetch Logic
+        if not request.target_role or request.target_role.strip() == "" or request.skill_gaps == []:
+            
+            # Fetch the user's latest resume evaluation
+            db_query = supabase.table("resume_evaluations").select("analysis_result").eq("user_id", request.user_id).order("created_at", desc=True).limit(1).execute()
+            
+            # "else return user not exist" logic:
+            if not db_query.data:
+                raise HTTPException(status_code=404, detail="User resume profile not found. Please upload a resume first to auto-detect your skill gaps. or provide a target role and skill gaps manually.")
+            
+            analysis = db_query.data[0].get("analysis_result", {})
+            request.skill_gaps = analysis.get("skill_gaps", [])
+            request.target_role = analysis.get("target_role_evaluated", analysis.get("suggested_roles", ["professional"])[0].strip()) # Fallback to first suggested role or "professional"
+
+            if not request.skill_gaps or request.target_role.strip() == "":
+                raise HTTPException(status_code=400, detail="No specific skill gaps were found in your profile. Please provide a manual target role.")
+
+
+
         # 1. OpenAI (GPT-4): Generate the structured roadmap
         prompt = f"Create a short, 3-step learning roadmap for a user transitioning to {request.target_role}. Focus on these skill gaps: {', '.join(request.skill_gaps)}."
         
