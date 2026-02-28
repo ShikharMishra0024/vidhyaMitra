@@ -129,21 +129,6 @@ async def evaluate_interview_session(request: EvaluateSessionRequest):
             "dashboard_summary": dashboard_summary
         }
 
-        # 4. Call OpenAI GPT-4
-        completion = await openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are a precise, JSON-outputting career coach AI."},
-                {"role": "user", "content": prompt}
-            ]
-        )
-        
-        # 5. Parse the AI Feedback
-        try:
-            ai_evaluation = json.loads(completion.choices[0].message.content)
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=500, detail="AI failed to return valid JSON.")
-
         # 6. Update the Supabase session record
         db_response = supabase.table("interview_sessions").update({
             "evaluation_data": ai_evaluation,
