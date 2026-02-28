@@ -42,7 +42,25 @@ async def start_interview_session(request: StartInterviewRequest):
     Assigns a unique ID to each question for reliable tracking.
     """
     try:
-        # 1. Ask GPT-4 to generate the questions
+        # 1. validate input and handle empty target_role with auto-fetch logic
+        if not request.target_role or request.target_role.strip() == "":
+            
+            # Fetch the user's latest resume evaluation
+            db_query = supabase.table("resume_evaluations").select("analysis_result").eq("user_id", request.user_id).order("created_at", desc=True).limit(1).execute()
+            
+            # "else return user not exist" logic:
+            if not db_query.data:
+                raise HTTPException(status_code=404, detail="User resume profile not found. Please upload a resume first to auto-detect your skill gaps. or provide a target role and skill gaps manually.")
+            
+            analysis = db_query.data[0].get("analysis_result", {})
+            request.target_role = analysis.get("target_role_evaluated", analysis.get("suggested_roles", ["professional"])[0].strip()) # Fallback to first suggested role or "professional"
+
+            if not request.target_role or request.target_role.strip() == "":
+                raise HTTPException(status_code=400, detail="No specific target role were found in your profile. Please provide a manual target role.")
+
+
+
+        # 2. Ask GPT-4 to generate the questions
         prompt = f"""
         You are conducting a professional job interview for a '{request.target_role}' position. 
         Generate exactly 5 interview questions. Include a mix of technical, behavioral, and situational questions.
@@ -67,19 +85,19 @@ async def start_interview_session(request: StartInterviewRequest):
             ]
         )
         
-        # 2. Parse the AI Data
+        # 3. Parse the AI Data
         try:
             ai_data = json.loads(completion.choices[0].message.content)
             raw_questions = ai_data.get("questions", [])
         except json.JSONDecodeError:
             raise HTTPException(status_code=500, detail="AI failed to return valid JSON.")
 
-        # 3. Format questions with unique IDs
+        # 4. Format questions with unique IDs
         formatted_questions = [
             {"id": str(uuid.uuid4()), "text": q_text} for q_text in raw_questions
         ]
 
-        # 4. Save the new session to Supabase
+        # 5. Save the new session to Supabase
         db_response = supabase.table("interview_sessions").insert({
             "user_id": request.user_id,
             "target_role": request.target_role,
