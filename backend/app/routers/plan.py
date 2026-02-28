@@ -9,8 +9,11 @@ from openai import AsyncOpenAI
 load_dotenv()
 
 # Initialize Clients & Keys
-supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY"))
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+openai_client = AsyncOpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1" # This tricks the OpenAI library into talking to Groq!
+)
 
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
@@ -33,7 +36,7 @@ async def generate_training_plan(request: PlanRequest):
         prompt = f"Create a short, 3-step learning roadmap for a user transitioning to {request.target_role}. Focus on these skill gaps: {', '.join(request.skill_gaps)}."
         
         completion = await openai_client.chat.completions.create(
-            model="gpt-4o", # Or gpt-4-turbo / gpt-4o for faster/cheaper JSON processing
+            model="llama-3.3-70b-versatile", # Or gpt-4-turbo / gpt-4o for faster/cheaper JSON processing
             messages=[{"role": "system", "content": "You are an expert career counselor."},
                       {"role": "user", "content": prompt}]
         )

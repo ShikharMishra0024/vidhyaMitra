@@ -10,8 +10,11 @@ import asyncio
 load_dotenv()
 
 # Initialize Clients
-supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY"))
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_SERVICE_ROLE_KEY"))
+openai_client = AsyncOpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1" # This tricks the OpenAI library into talking to Groq!
+)
 
 router = APIRouter()
 
@@ -66,7 +69,7 @@ async def evaluate_interview_session(request: EvaluateSessionRequest):
             """
             try:
                 response = await openai_client.chat.completions.create(
-                    model="gpt-4",
+                    model="llama-3.3-70b-versatile",
                     messages=[
                         {"role": "system", "content": "You are a precise, JSON-outputting career coach AI."},
                         {"role": "user", "content": single_prompt}
@@ -111,7 +114,7 @@ async def evaluate_interview_session(request: EvaluateSessionRequest):
         """
         
         summary_completion = await openai_client.chat.completions.create(
-            model="gpt-4",
+            model="llama-3.3-70b-versatile",
             messages=[
                 {"role": "system", "content": "You are a precise, JSON-outputting career coach AI."},
                 {"role": "user", "content": summary_prompt}
