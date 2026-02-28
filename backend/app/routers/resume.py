@@ -14,8 +14,11 @@ load_dotenv()
 
 # Initialize Clients
 supabase: Client = create_client(os.getenv("SUPABASE_URL"), os.getenv("SUPABASE_ANON_KEY"))
-openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-
+# openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+openai_client = AsyncOpenAI(
+    api_key=os.getenv("GROQ_API_KEY"),
+    base_url="https://api.groq.com/openai/v1" # This tricks the OpenAI library into talking to Groq!
+)
 router = APIRouter()
 
 @router.post("/upload")
@@ -70,19 +73,47 @@ async def upload_resume(
         }}
         """
 
-        # 4. Call OpenAI GPT-4
+        # # 4. Call OpenAI GPT-4
+        # completion = await openai_client.chat.completions.create(
+        #     model="openai/gpt-oss-20b",
+        #     messages=[
+        #         {"role": "system", "content": "You are a precise, JSON-outputting career counselor AI."},
+        #         {"role": "user", "content": prompt}
+        #     ]
+        # )
+        
+        # 4. Call the AI
         completion = await openai_client.chat.completions.create(
-            model="gpt-4o", # Or gpt-4-turbo / gpt-4o for faster/cheaper JSON processing
+            # Make sure you are using a current Groq model like this one:
+            model="llama-3.3-70b-versatile", 
             messages=[
-                {"role": "system", "content": "You are a precise, JSON-outputting career counselor AI."},
+                {"role": "system", "content": "You are a precise AI, career counselor AI. You MUST output ONLY raw JSON. No markdown, no formatting, no conversational text."},
                 {"role": "user", "content": prompt}
-            ]
+            ],
+            # If the model supports it, this forces JSON mode:
+            response_format={"type": "json_object"} 
         )
         
-        # 5. Parse the AI Response
+        # 5. Parse the AI Response Defensively
+        raw_content = completion.choices[0].message.content.strip()
+        
+        # Clean up Markdown code blocks if the AI added them
+        if raw_content.startswith("```json"):
+            raw_content = raw_content[7:] # Remove ```json
+        elif raw_content.startswith("```"):
+            raw_content = raw_content[3:] # Remove ```
+            
+        if raw_content.endswith("```"):
+            raw_content = raw_content[:-3] # Remove ending ```
+            
+        raw_content = raw_content.strip() # Final trim of any whitespace
+        
         try:
-            ai_analysis = json.loads(completion.choices[0].message.content)
+            ai_analysis = json.loads(raw_content)
+            print(f"--- AI RAW OUTPUT ---\n{raw_content}\n---------------------")
         except json.JSONDecodeError:
+            # Print the raw text to your terminal so you can see exactly how the AI messed up
+            print(f"--- AI RAW OUTPUT ---\n{raw_content}\n---------------------")
             raise HTTPException(status_code=500, detail="AI failed to return valid JSON.")
 
         # 6. Save the result directly to Supabase
