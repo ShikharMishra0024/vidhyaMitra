@@ -80,7 +80,7 @@ async def start_interview_session(request: StartInterviewRequest):
         completion = await openai_client.chat.completions.create(
             model="llama-3.3-70b-versatile", 
             messages=[
-                {"role": "system", "content": "You are a precise, JSON-outputting hiring manager AI."},
+                {"role": "system", "content": "You are a precise, JSON-outputting hiring manager AI. You MUST output ONLY raw JSON. No markdown, no formatting, no conversational text."},
                 {"role": "user", "content": prompt}
             ]
         )

@@ -63,7 +63,7 @@ async def generate_quiz(request: GenerateQuizRequest):
         completion = await openai_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a precise, JSON-outputting educational AI."},
+                {"role": "system", "content": "You are a precise, JSON-outputting educational AI.You MUST output ONLY raw JSON. No markdown, no formatting, no conversational text."},
                 {"role": "user", "content": prompt}
             ]
         )

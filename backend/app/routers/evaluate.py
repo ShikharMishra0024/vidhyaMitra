@@ -71,7 +71,7 @@ async def evaluate_interview_session(request: EvaluateSessionRequest):
                 response = await openai_client.chat.completions.create(
                     model="llama-3.3-70b-versatile",
                     messages=[
-                        {"role": "system", "content": "You are a precise, JSON-outputting career coach AI."},
+                        {"role": "system", "content": "You are a precise, JSON-outputting career coach AI. You MUST output ONLY raw JSON. No markdown, no formatting, no conversational text."},
                         {"role": "user", "content": single_prompt}
                     ]
                 )
@@ -116,7 +116,7 @@ async def evaluate_interview_session(request: EvaluateSessionRequest):
         summary_completion = await openai_client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role": "system", "content": "You are a precise, JSON-outputting career coach AI."},
+                {"role": "system", "content": "You are a precise, JSON-outputting career coach AI. You MUST output ONLY raw JSON. No markdown, no formatting, no conversational text."},
                 {"role": "user", "content": summary_prompt}
             ]
         )
