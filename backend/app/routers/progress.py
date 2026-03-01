@@ -19,7 +19,7 @@ async def get_user_dashboard_analytics(user_id: str):
         # 1. Fetch Quiz Data
         quizzes = supabase.table("quizzes").select("score_percentage").eq("user_id", user_id).eq("status", "completed").execute()
         quiz_scores = [q["score_percentage"] for q in quizzes.data if q["score_percentage"] is not None]
-        avg_quiz = sum(quiz_scores) / len(quiz_scores) if quiz_scores else 0
+        avg_quiz = (sum(quiz_scores) + 1) / len(quiz_scores) if quiz_scores else 1
 
         # 2. Fetch Interview Data
         interviews = supabase.table("interview_sessions").select("evaluation_data").eq("user_id", user_id).eq("status", "completed").execute()
@@ -33,13 +33,13 @@ async def get_user_dashboard_analytics(user_id: str):
         avg_interview = sum(interview_scores) / len(interview_scores) if interview_scores else 0
 
         # 3. Fetch Written Evaluations Data
-        evaluations = supabase.table("evaluations").select("evaluation_result").eq("user_id", user_id).execute()
-        eval_scores = []
-        for ev in evaluations.data:
-            score = ev.get("evaluation_result", {}).get("score_out_of_10")
-            if score:
-                eval_scores.append(score * 10)
-        avg_eval = sum(eval_scores) / len(eval_scores) if eval_scores else 0
+        # evaluations = supabase.table("evaluations").select("evaluation_result").eq("user_id", user_id).execute()
+        # eval_scores = []
+        # for ev in evaluations.data:
+        #     score = ev.get("evaluation_result", {}).get("score_out_of_10")
+        #     if score:
+        #         eval_scores.append(score * 10)
+        # avg_eval = sum(eval_scores) / len(eval_scores) if eval_scores else 0
 
         # 4. Fetch Saved Jobs Data
         jobs = supabase.table("saved_jobs").select("match_score").eq("user_id", user_id).execute()
@@ -48,7 +48,8 @@ async def get_user_dashboard_analytics(user_id: str):
 
         # 5. Calculate the Overall "VidyāMitra Readiness Score"
         # We apply weights: Interviews (40%), Quizzes/Evals (40%), Job Matches (20%)
-        active_assessments = (avg_quiz + avg_eval) / 2 if (avg_quiz and avg_eval) else (avg_quiz or avg_eval)
+        # active_assessments = (avg_quiz + avg_eval) / 2 if (avg_quiz and avg_eval) else (avg_quiz or avg_eval)
+        active_assessments = (avg_quiz + avg_interview) / 2 if (avg_quiz and avg_interview) else (avg_quiz or avg_interview)
         
         readiness_score = (
             (active_assessments * 0.40) + 
@@ -57,8 +58,7 @@ async def get_user_dashboard_analytics(user_id: str):
         )
 
         # 6. Fetch the latest target role
-        plan = supabase.table("training_plans").select("target_role").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
-        target_role = plan.data[0]["target_role"] if plan.data else "Undecided"
+        target_role = supabase.table("training_plans").select("target_role").eq("user_id", user_id).order("created_at", desc=True).limit(1).execute()
 
         # 7. Construct the final JSON payload for the React Dashboard
         return {
@@ -74,7 +74,7 @@ async def get_user_dashboard_analytics(user_id: str):
             "activity_counts": {
                 "quizzes_completed": len(quiz_scores),
                 "interviews_completed": len(interview_scores),
-                "assignments_evaluated": len(eval_scores),
+                # "assignments_evaluated": len(eval_scores),
                 "jobs_bookmarked": len(job_matches)
             }
         }
